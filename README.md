@@ -1,5 +1,5 @@
 # pa-permission-rollback-simulator
-Simulates the impact of permission rollbacks (removal of access) to identify potential service disruptions or orphaned access grants. Uses networkx to build dependency graphs and simulate removals. - Focused on Tools for analyzing and assessing file system permissions
+Simulates the impact of permission rollbacks (removal of access) to identify directly impacted resources and orphaned resources, meaning resources no user can still access after the rollback. This tool only simulates: it changes no file, permission, or account state. Uses networkx to build access graphs and simulate removals. An unknown user and an empty data file exit 1. - Focused on Tools for analyzing and assessing file system permissions
 
 ## Install
 `git clone https://github.com/ShadowStrikeHQ/pa-permission-rollback-simulator`

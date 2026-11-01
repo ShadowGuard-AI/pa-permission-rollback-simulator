@@ -5,7 +5,6 @@ import sys
 from typing import List, Dict, Set, Tuple
 
 import networkx as nx
-from pathspec import PathSpec
 from rich.console import Console
 from rich.table import Column, Table
 
@@ -54,7 +53,10 @@ class PermissionRollbackSimulator:
         Returns:
             Tuple[Set[str], Set[str]]: A tuple containing two sets:
                 - impacted_resources: Resources that are directly impacted by the rollback.
-                - indirectly_impacted_resources: Resources indirectly impacted (through dependencies).
+                - indirectly_impacted_resources: Resources no user can still access after the
+                  rollback (orphaned by this rollback), with the direct set removed. The graph
+                  holds no resource to resource dependency edges, so this set is an orphaned
+                  set, not a dependency chain result.
         """
         try:
             impacted_resources = set()
@@ -83,7 +85,8 @@ class PermissionRollbackSimulator:
                             #Node not in the graph
                             pass
             indirectly_impacted_resources = set(self.file_system_data.keys()) - accessible_resources
-            
+            indirectly_impacted_resources -= impacted_resources
+
             return impacted_resources, indirectly_impacted_resources
 
         except Exception as e:
@@ -106,7 +109,7 @@ class PermissionRollbackSimulator:
             table.add_row("Directly Impacted", resource)
 
         for resource in sorted(indirectly_impacted_resources):
-            table.add_row("Indirectly Impacted", resource)
+            table.add_row("Orphaned (no user can still access)", resource)
 
         self.console.print(table)
 
@@ -180,6 +183,17 @@ def main():
             print(f"Error loading file system data: {e}")
             sys.exit(1)
 
+
+        if not file_system_data:
+            logging.error("Data file contains no resources. Nothing was simulated.")
+            print("Error: Data file contains no resources. Nothing was simulated.")
+            sys.exit(1)
+
+        known_users = {name for names in file_system_data.values() for name in names}
+        if args.user not in known_users:
+            logging.error(f"User not present in data: {args.user}")
+            print(f"Error: User not present in data: {args.user}")
+            sys.exit(1)
 
         simulator = PermissionRollbackSimulator(file_system_data)
         simulator.build_dependency_graph()
