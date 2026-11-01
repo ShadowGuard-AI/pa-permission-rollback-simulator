@@ -69,11 +69,19 @@ class PermissionRollbackSimulator:
             
             # Simulate removing edges related to target user
             edges_to_remove = [(u, v) for u, v in self.graph.edges() if u == target_user]
+            # This edits the simulator graph in place. A second simulate call on
+            # the same instance starts from the already rolled back state, so
+            # results depend on call history, not just on the input data.
             self.graph.remove_edges_from(edges_to_remove)
 
             # 2. Identify indirectly impacted resources (resources no longer accessible)
             # This requires more sophisticated dependency analysis.  For now,
             # we'll consider resources that are no longer reachable from any user.
+            # This pass recomputes descendants for every listed user once per
+            # resource key, so it repeats the same graph searches many times.
+            # And users and resources share one node namespace: a user whose
+            # name equals a path string in the data merges into that path node,
+            # and reachability then crosses between the two meanings.
             accessible_resources = set()
             for node in self.graph.nodes():
                 if isinstance(node, str) and node in self.file_system_data.keys(): #Check that it's a resource
@@ -163,6 +171,9 @@ def main():
                     print("Error: Data file must contain a dictionary.")
                     sys.exit(1)
                 # Validate that the dictionary contains lists of strings
+                # I validate the values strictly and the keys not at all, beyond what
+                # JSON itself guarantees. An empty string path or a path repeated as
+                # a username passes here and only shows its damage in the graph.
                 for k, v in file_system_data.items():
                     if not isinstance(v, list):
                         logging.error("Values in data file dictionary must be lists.")
